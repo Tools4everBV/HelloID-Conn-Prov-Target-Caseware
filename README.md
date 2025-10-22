@@ -47,7 +47,7 @@ The following features are available:
 | **Permissions**                           | ❌         | -                                       |         |
 | **Resources**                             | ❌         | -                                       |         |
 | **Entitlement Import: Accounts**          | ✅         | -                                       |         |
-| **Entitlement Import: Permissions**       | ❌         | -                                       |         |
+| **Entitlement Import: Permissions**       | ✅            | -                                       |         |
 | **Governance Reconciliation Resolutions** | ✅         | -                                       |         |
 
 ## Getting started
