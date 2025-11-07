@@ -44,10 +44,10 @@ The following features are available:
 | Feature                                   | Supported | Actions                                 | Remarks |
 | ----------------------------------------- | --------- | --------------------------------------- | ------- |
 | **Account Lifecycle**                     | ✅         | Create, Update, Enable, Disable, Delete |         |
-| **Permissions**                           | ❌         | -                                       |         |
+| **Permissions**                           | ✅         | -                                       |         |
 | **Resources**                             | ❌         | -                                       |         |
 | **Entitlement Import: Accounts**          | ✅         | -                                       |         |
-| **Entitlement Import: Permissions**       | ✅            | -                                       |         |
+| **Entitlement Import: Permissions**       | ❌            | -                                       |         |
 | **Governance Reconciliation Resolutions** | ✅         | -                                       |         |
 
 ## Getting started
@@ -117,7 +117,9 @@ The following endpoints are used by the connector
 | {baseUrl}/ms/caseware-cloud/api/v2/auth/token | Retrieve oAuth token |
 | {baseUrl}/ms/caseware-cloud/api/v2/users      | User related actions |
 | {baseUrl}/ms/caseware-cloud/api/v2/users/:id/role-assignments      | Grant / revoke role |
+| {baseUrl}/ms/caseware-cloud/api/v2/groups/{groupId}/user-assignments      | Grant / revoke role |
 | {baseUrl}/ms/caseware-cloud/api/v2/roles      | Retrieve available roles |
+| {baseUrl}/ms/caseware-cloud/api/v2/groups      | Retrieve available groups |
 
 ## Getting help
 
