@@ -5,6 +5,7 @@
         "defaultValue": "",
         "templateOptions": {
             "label": "BaseUrl",
+            "placeholder": "https://nl.casewarecloud.com",
             "description": "The URL to the API.",
             "required": true
         }
