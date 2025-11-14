@@ -90,10 +90,6 @@ The account reference is populated with the property `CWGuid` property from _Cas
 
 Within the _create_ lifecycle action, initial validation and correlation of the user account is based on the `email` attribute. The `accountReference` will be the ` CWGuid` property.
 
-### No account creation
-
-This connector does not create new accounts. The _create_ lifecycle actions only performs account correlation. Subsequently; the `$actionContext.DryRun` logic has been removed.
-
 ### `OwnerType` is a required property when updating accounts
 
 When performing an update, the OwnerType field must be present and valid in the payload.
