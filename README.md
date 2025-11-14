@@ -94,9 +94,9 @@ Within the _create_ lifecycle action, initial validation and correlation of the 
 
 When performing an update, the OwnerType field must be present and valid in the payload.
 
-### No property to enable or disable
+### Concurrent action configuration
 
-There's no property to _enable_ or _disable_ the user account. Caseware does provide a _CanLogin_ property. However, its not possible to change the value of this property since its tied directly to an external user synchronization.
+Needs to be set on 2
 
 ### Memberships / roles
 
