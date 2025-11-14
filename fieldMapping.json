@@ -2,16 +2,138 @@
   "Version": "v1",
   "MappingFields": [
     {
+      "Name": "Type",
+      "Description": "string or null\nA - active; I - inactive. Default to \"A\" (active). Permitted Values: {\"A\", \"I\"}.",
+      "Type": "Text",
+      "MappingActions": [
+        {
+          "MapForActions": [
+            "Enable"
+          ],
+          "MappingMode": "Fixed",
+          "Value": "\"A\"",
+          "UsedInNotifications": false,
+          "StoreInAccountData": false
+        },
+        {
+          "MapForActions": [
+            "Disable"
+          ],
+          "MappingMode": "Fixed",
+          "Value": "\"I\"",
+          "UsedInNotifications": false,
+          "StoreInAccountData": false
+        }
+      ]
+    },
+    {
+      "Name": "Email",
+      "Description": "Required: Contact email. Maximum characters allowed: 100. Used to login.",
+      "Type": "Text",
+      "MappingActions": [
+        {
+          "MapForActions": [
+            "Create"
+          ],
+          "MappingMode": "Complex",
+          "Value": "\"function getEmail() {\\r\\n    let mail = '';\\r\\n    if (typeof Person.Accounts.MicrosoftActiveDirectory.mail !== 'undefined' && Person.Accounts.MicrosoftActiveDirectory.mail) {\\r\\n        mail = Person.Accounts.MicrosoftActiveDirectory.mail;\\r\\n    }\\r\\n    return mail;\\r\\n}\\r\\ngetEmail()\"",
+          "UsedInNotifications": false,
+          "StoreInAccountData": true
+        }
+      ]
+    },
+    {
+      "Name": "InactiveDate",
+      "Description": "Required by disable Date staff/contact made inactive.",
+      "Type": "Text",
+      "MappingActions": [
+        {
+          "MapForActions": [
+            "Disable"
+          ],
+          "MappingMode": "Complex",
+          "Value": "\"function getVandaagDatumGeformatteerd() {\\r\\n    const vandaag = new Date();\\r\\n    const jaar = vandaag.getFullYear();\\r\\n    const maand = String(vandaag.getMonth() + 1).padStart(2, '0');\\r\\n    const dag = String(vandaag.getDate()).padStart(2, '0');\\r\\n      \\r\\n    return `${jaar}-${maand}-${dag}`;\\r\\n}\\r\\ngetVandaagDatumGeformatteerd()\\r\\n\"",
+          "UsedInNotifications": false,
+          "StoreInAccountData": false
+        }
+      ]
+    },
+    {
       "Name": "Title",
       "Description": "",
       "Type": "Text",
       "MappingActions": [
         {
           "MapForActions": [
-            "Update"
+            "Update",
+            "Create"
           ],
           "MappingMode": "Field",
-          "Value": "\"Person.PrimaryContract.Title.Name\"",
+          "Value": "\"Person.Details.HonorificSuffix\"",
+          "UsedInNotifications": false,
+          "StoreInAccountData": false
+        }
+      ]
+    },
+    {
+      "Name": "OwnerType",
+      "Description": "Required by create\nEnum: \"Staff\" \"Contact\" \"Plugin\" \"Internal\" \"ApiClient\"\nOwner type. 0 - this person is a Staff, 1 - a Contact. Default to 0 (Staff).",
+      "Type": "Text",
+      "MappingActions": [
+        {
+          "MapForActions": [
+            "Create"
+          ],
+          "MappingMode": "Fixed",
+          "Value": "\"Staff\"",
+          "UsedInNotifications": false,
+          "StoreInAccountData": false
+        }
+      ]
+    },
+    {
+      "Name": "Admin",
+      "Description": "",
+      "Type": "Text",
+      "MappingActions": [
+        {
+          "MapForActions": [
+            "Create"
+          ],
+          "MappingMode": "Fixed",
+          "Value": "\"false\"",
+          "UsedInNotifications": false,
+          "StoreInAccountData": false
+        }
+      ]
+    },
+    {
+      "Name": "IsSingleSignOnUser",
+      "Description": "",
+      "Type": "Text",
+      "MappingActions": [
+        {
+          "MapForActions": [
+            "Create"
+          ],
+          "MappingMode": "Fixed",
+          "Value": "\"true\"",
+          "UsedInNotifications": false,
+          "StoreInAccountData": false
+        }
+      ]
+    },
+    {
+      "Name": "UserName",
+      "Description": "Login name, e.g. username. Maximum characters allowed: 50. Not used for contacts in Time, since they do not login. If not provided, server will generate a GUID.",
+      "Type": "Text",
+      "MappingActions": [
+        {
+          "MapForActions": [
+            "Create"
+          ],
+          "MappingMode": "Complex",
+          "Value": "\"function getsAMAccountname() {\\r\\n    let sAMAccountname = '';\\r\\n\\r\\n    if (typeof Person.Accounts.MicrosoftActiveDirectory.sAMAccountname !== 'undefined' && Person.Accounts.MicrosoftActiveDirectory.sAMAccountname) {\\r\\n        upn = Person.Accounts.MicrosoftActiveDirectory.sAMAccountname;\\r\\n    }\\r\\n\\r\\n    return sAMAccountname;\\r\\n}\\r\\n\\r\\ngetsAMAccountname();\"",
           "UsedInNotifications": false,
           "StoreInAccountData": false
         }
@@ -19,17 +141,17 @@
     },
     {
       "Name": "FirstName",
-      "Description": "",
+      "Description": "Given name of the person. Maximum characters allowed: 30. Default to empty string.",
       "Type": "Text",
       "MappingActions": [
         {
           "MapForActions": [
-            "Update"
+            "Create"
           ],
-          "MappingMode": "None",
-          "Value": "\"\"",
+          "MappingMode": "Field",
+          "Value": "\"Person.Name.NickName\"",
           "UsedInNotifications": false,
-          "StoreInAccountData": false
+          "StoreInAccountData": true
         }
       ]
     },
@@ -40,12 +162,12 @@
       "MappingActions": [
         {
           "MapForActions": [
-            "Update"
+            "Create"
           ],
-          "MappingMode": "None",
-          "Value": "\"\"",
+          "MappingMode": "Complex",
+          "Value": "\"// Please enter the mapping logic to generate the lastName based on name convention.\\r\\nfunction generatelastName() {\\r\\n    let middleName = Person.Name.FamilyNamePrefix;\\r\\n    let lastName = Person.Name.FamilyName;\\r\\n    let middleNamePartner = Person.Name.FamilyNamePartnerPrefix;\\r\\n    let lastNamePartner = Person.Name.FamilyNamePartner;\\r\\n    let convention = Person.Name.Convention;\\r\\n\\r\\n    // B\\t    van den Boele\\r\\n    // BP\\t    van den Boele - de Vries\\r\\n    // P\\t    de Vries\\r\\n    // PB\\t    de Vries - van den Boele\\r\\n\\r\\n    let nameFormatted = '';\\r\\n\\r\\n    switch (convention) {\\r\\n        case \\\"B\\\":\\r\\n            if (typeof middleName !== 'undefined' && middleName) { nameFormatted = nameFormatted + ' ' + middleName }\\r\\n            nameFormatted = nameFormatted + ' ' + lastName;\\r\\n            break;\\r\\n        case \\\"BP\\\":\\r\\n            if (typeof middleName !== 'undefined' && middleName) { nameFormatted = nameFormatted + ' ' + middleName }\\r\\n            nameFormatted = nameFormatted + ' ' + lastName;\\r\\n\\r\\n            nameFormatted = nameFormatted + ' - ';\\r\\n\\r\\n            if (typeof middleNamePartner !== 'undefined' && middleNamePartner) { nameFormatted = nameFormatted + middleNamePartner + ' ' }\\r\\n            nameFormatted = nameFormatted + lastNamePartner;\\r\\n            break;\\r\\n        case \\\"P\\\":\\r\\n            if (typeof middleNamePartner !== 'undefined' && middleNamePartner) { nameFormatted = nameFormatted + ' ' + middleNamePartner }\\r\\n            nameFormatted = nameFormatted + ' ' + lastNamePartner;\\r\\n            break;\\r\\n        case \\\"PB\\\":\\r\\n            if (typeof middleNamePartner !== 'undefined' && middleNamePartner) { nameFormatted = nameFormatted + ' ' + middleNamePartner }\\r\\n            nameFormatted = nameFormatted + ' ' + lastNamePartner;\\r\\n\\r\\n            nameFormatted = nameFormatted + ' - ';\\r\\n\\r\\n            if (typeof middleName !== 'undefined' && middleName) { nameFormatted = nameFormatted + middleName + ' ' }\\r\\n            nameFormatted = nameFormatted + lastName;\\r\\n            break;\\r\\n        default:\\r\\n            if (typeof middleName !== 'undefined' && middleName) { nameFormatted = nameFormatted + ' ' + middleName }\\r\\n            nameFormatted = nameFormatted + ' ' + lastName;\\r\\n            break;\\r\\n    }\\r\\n    const lastNameFormatted = nameFormatted.trim();\\r\\n\\r\\n    return lastNameFormatted;\\r\\n}\\r\\n\\r\\ngeneratelastName();\"",
           "UsedInNotifications": false,
-          "StoreInAccountData": false
+          "StoreInAccountData": true
         }
       ]
     },
@@ -56,28 +178,12 @@
       "MappingActions": [
         {
           "MapForActions": [
-            "Update"
-          ],
-          "MappingMode": "None",
-          "Value": "\"\"",
-          "UsedInNotifications": false,
-          "StoreInAccountData": false
-        }
-      ]
-    },
-    {
-      "Name": "Email",
-      "Description": "",
-      "Type": "Text",
-      "MappingActions": [
-        {
-          "MapForActions": [
             "Create"
           ],
           "MappingMode": "Complex",
-          "Value": "\"function getEmail() {\\r\\n    let mail = '';\\r\\n    if (typeof Person.Accounts.MicrosoftActiveDirectory.mail !== 'undefined' && Person.Accounts.MicrosoftActiveDirectory.mail) {\\r\\n        mail = Person.Accounts.MicrosoftActiveDirectory.mail;\\r\\n    }\\r\\n    return mail;\\r\\n}\\r\\ngetEmail()\"",
+          "Value": "\"function getPrefixes() {\\r\\n    let middleName = Person.Name.FamilyNamePrefix;\\r\\n    let middleNamePartner = Person.Name.FamilyNamePartnerPrefix;\\r\\n    let convention = Person.Name.Convention;\\r\\n\\r\\n    let nameFormatted = '';\\r\\n    let prefix = '';\\r\\n\\r\\n    switch (convention) {\\r\\n        case \\\"P\\\":\\r\\n        case \\\"PB\\\":\\r\\n            nameFormatted = middleNamePartner;\\r\\n            break;\\r\\n        case \\\"B\\\":\\r\\n        case \\\"BP\\\":\\r\\n        default:\\r\\n            nameFormatted = middleName;\\r\\n            break;\\r\\n    }\\r\\n\\r\\n    if (typeof nameFormatted !== 'undefined' && nameFormatted) {\\r\\n        prefix = nameFormatted.trim();\\r\\n    } else {\\r\\n        prefix = nameFormatted;\\r\\n    }\\r\\n\\r\\n    return prefix;\\r\\n}\\r\\n\\r\\ngetPrefixes();\"",
           "UsedInNotifications": false,
-          "StoreInAccountData": false
+          "StoreInAccountData": true
         }
       ]
     }
