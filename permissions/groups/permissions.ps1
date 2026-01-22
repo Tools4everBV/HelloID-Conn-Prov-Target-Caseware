@@ -53,28 +53,37 @@ try {
     }
     $responseToken = Invoke-RestMethod @splatRetrieveTokenParams
 
- $splatRestParams = @{
-            #Uri     = "$($actionContext.Configuration.BaseUrl)/$($actionContext.Configuration.CustomerId)/ms/caseware-cloud/api/v2/roles?pageSize=$pageSize&page=$page"
-            Uri     = "$($actionContext.Configuration.BaseUrl)/$($actionContext.Configuration.CustomerId)/ms/caseware-cloud/api/v2/groups"
+    $pageSize = 50
+    $page = 1
+    do {
+        Write-Information "Getting page: $page"
+        $splatRestParams = @{
+            Uri     = "$($actionContext.Configuration.BaseUrl)/$($actionContext.Configuration.CustomerId)/ms/caseware-cloud/api/v2/groups?pageSize=$pageSize&page=$page"
             Method  = 'GET'
             Headers = @{
                 Authorization = "Bearer $($responseToken.Token)"
             }
         }
         $response = Invoke-RestMethod @splatRestParams
-           
+        if ($null -ne $response -and $response.Count -gt 0) {
             foreach ($group in $response) {
-                        $outputContext.Permissions.Add(
-                            @{
-                                DisplayName    = $group.briefdescription
-                                Identification = @{
-                                    Reference = $group.CWGuid
-                                }
-                            }
-                        )
+                $outputContext.Permissions.Add(
+                    @{
+                        DisplayName    = $group.briefdescription
+                        Identification = @{
+                            Reference = $group.CWGuid
+                        }
                     }
-        
-        } catch {
+                )
+            }
+
+            $page++
+        }
+        else {
+            break
+        }
+    } while ($true)
+} catch {
     $ex = $PSItem
     if ($($ex.Exception.GetType().FullName -eq 'Microsoft.PowerShell.Commands.HttpResponseException') -or
         $($ex.Exception.GetType().FullName -eq 'System.Net.WebException')) {
