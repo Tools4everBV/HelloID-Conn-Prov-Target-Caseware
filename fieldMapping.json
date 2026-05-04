@@ -2,47 +2,6 @@
   "Version": "v1",
   "MappingFields": [
     {
-      "Name": "Type",
-      "Description": "string or null\nA - active; I - inactive. Default to \"A\" (active). Permitted Values: {\"A\", \"I\"}.",
-      "Type": "Text",
-      "MappingActions": [
-        {
-          "MapForActions": [
-            "Enable"
-          ],
-          "MappingMode": "Fixed",
-          "Value": "\"A\"",
-          "UsedInNotifications": false,
-          "StoreInAccountData": false
-        },
-        {
-          "MapForActions": [
-            "Disable"
-          ],
-          "MappingMode": "Fixed",
-          "Value": "\"I\"",
-          "UsedInNotifications": false,
-          "StoreInAccountData": false
-        }
-      ]
-    },
-    {
-      "Name": "InactiveDate",
-      "Description": "Required by disable Date staff/contact made inactive.",
-      "Type": "Text",
-      "MappingActions": [
-        {
-          "MapForActions": [
-            "Disable"
-          ],
-          "MappingMode": "Complex",
-          "Value": "\"function getVandaagDatumGeformatteerd() {\\r\\n    const vandaag = new Date();\\r\\n    const jaar = vandaag.getFullYear();\\r\\n    const maand = String(vandaag.getMonth() + 1).padStart(2, '0');\\r\\n    const dag = String(vandaag.getDate()).padStart(2, '0');\\r\\n      \\r\\n    return `${jaar}-${maand}-${dag}`;\\r\\n}\\r\\ngetVandaagDatumGeformatteerd()\\r\\n\"",
-          "UsedInNotifications": false,
-          "StoreInAccountData": false
-        }
-      ]
-    },
-    {
       "Name": "OwnerType",
       "Description": "Required by create\nEnum: \"Staff\" \"Contact\" \"Plugin\" \"Internal\" \"ApiClient\"\nOwner type. 0 - this person is a Staff, 1 - a Contact. Default to 0 (Staff).",
       "Type": "Text",
