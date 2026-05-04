@@ -181,7 +181,7 @@
             "Create"
           ],
           "MappingMode": "Complex",
-          "Value": "\"function getsAMAccountname() {\\r\\n    let sAMAccountname = '';\\r\\n\\r\\n    if (typeof Person.Accounts._238d9c9216aa4027a5e78d31fc75cbad.sAMAccountName !== 'undefined' && Person.Accounts._238d9c9216aa4027a5e78d31fc75cbad.sAMAccountName) {\\r\\n        sAMAccountname = Person.Accounts._238d9c9216aa4027a5e78d31fc75cbad.sAMAccountName;\\r\\n    }\\r\\n\\r\\n    return sAMAccountname;\\r\\n}\\r\\n\\r\\ngetsAMAccountname();\"",
+          "Value": "\"function getsAMAccountname() {\\r\\n    let sAMAccountname = '';\\r\\n\\r\\n    if (typeof Person.Accounts.MicrosoftActiveDirectory.sAMAccountName !== 'undefined' && Person.Accounts.MicrosoftActiveDirectory.sAMAccountName) {\\r\\n        sAMAccountname = Person.Accounts.MicrosoftActiveDirectory.sAMAccountName;\\r\\n    }\\r\\n\\r\\n    return sAMAccountname;\\r\\n}\\r\\n\\r\\ngetsAMAccountname();\"",
           "UsedInNotifications": true,
           "StoreInAccountData": true
         }
