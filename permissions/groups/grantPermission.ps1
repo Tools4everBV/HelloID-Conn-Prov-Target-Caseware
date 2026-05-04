@@ -80,51 +80,35 @@ try {
     switch ($action) {
         'GrantPermission' {
             if (-not($actionContext.DryRun -eq $True)) {
-                try {
-                    Write-Information "Granting Caseware permission: [$($actionContext.PermissionDisplayName)] - [$($actionContext.References.Permission.Reference)]"
-                    $peoplearraylist = @($actionContext.References.Account)
-                    $splatRestParams = @{
-                        Uri         = "$($actionContext.Configuration.BaseUrl)/$($actionContext.Configuration.CustomerId)/ms/caseware-cloud/api/v2/groups/$($actionContext.References.Permission.Reference)/user-assignments"
-                        Method      = 'PATCH'
-                        Body        = @{
-                            isRemove = $false
-                            people   = $peoplearraylist
-                        } | ConvertTo-Json
-                        ContentType = 'application/json'
-                        Headers     = @{
-                            Authorization = "Bearer $($responseToken.Token)"
-                        }
+                Write-Information "Granting Caseware permission: [$($actionContext.PermissionDisplayName)] - [$($actionContext.References.Permission.Reference)]"
+                $peoplearraylist = @($actionContext.References.Account)
+                $splatRestParams = @{
+                    Uri         = "$($actionContext.Configuration.BaseUrl)/$($actionContext.Configuration.CustomerId)/ms/caseware-cloud/api/v2/groups/$($actionContext.References.Permission.Reference)/user-assignments"
+                    Method      = 'PATCH'
+                    Body        = @{
+                        isRemove = $false
+                        people   = $peoplearraylist
+                    } | ConvertTo-Json
+                    ContentType = 'application/json'
+                    Headers     = @{
+                        Authorization = "Bearer $($responseToken.Token)"
                     }
-                    $null = Invoke-RestMethod @splatRestParams 
-                  
-
-                    $outputContext.Success = $true
-                    $outputContext.AuditLogs.Add([PSCustomObject]@{
-                            Message = "Grant permission [$($actionContext.PermissionDisplayName)] was successful"
-                            IsError = $false
-                        })
-
                 }
-                catch {
-                    if ($_.Exception.Response.StatusCode -eq 404) {
-                        $outputContext.Success = $true
-                        $outputContext.AuditLogs.Add([PSCustomObject]@{
-                                Message = "Grant permission [$($actionContext.PermissionDisplayName)] was already granted."
-                                IsError = $false
-                            })
-                    }
-                    else {
-                        throw $_
-                    }  
-                }
-            }   else {
-                        Write-Information "[DryRun] Grant Caseware permission: [$($actionContext.PermissionDisplayName)] - [$($actionContext.References.Permission.Reference)], will be executed during enforcement"
-                          $outputContext.Success = $true
-                          $outputContext.AuditLogs.Add([PSCustomObject]@{
-                                Message = "Grant permission [$($actionContext.PermissionDisplayName)] will be granted."
-                                IsError = $false
-                            })
-                    }
+                $null = Invoke-RestMethod @splatRestParams
+
+                $outputContext.Success = $true
+                $outputContext.AuditLogs.Add([PSCustomObject]@{
+                    Message = "Grant permission [$($actionContext.PermissionDisplayName)] was successful"
+                    IsError = $false
+                })
+            } else {
+                Write-Information "[DryRun] Grant Caseware permission: [$($actionContext.PermissionDisplayName)] - [$($actionContext.References.Permission.Reference)], will be executed during enforcement"
+                $outputContext.Success = $true
+                $outputContext.AuditLogs.Add([PSCustomObject]@{
+                    Message = "Grant permission [$($actionContext.PermissionDisplayName)] will be granted."
+                    IsError = $false
+                })
+            }
         }
 
         'NotFound' {
