@@ -89,44 +89,31 @@ try {
     $response = Invoke-RestMethod @splatRestParams
     $correlatedAccount = ConvertTo-HelloIDAccountObject -CaseWareAccountObject $response
 
-    # Make sure to filter out arrays from $outputContext.Data (If this is not mapped to type Array in the fieldmapping). This is not supported by HelloID.
+    # Make sure to filter out arrays from $outputContext.Data (If this is not mapped to type Array in the fieldmapping).
     $outputContext.PreviousData = $correlatedAccount
+    
     if ($null -ne $correlatedAccount) {
-        $correlatedAccount.PSObject.Properties.Remove('FirstName')
-        $correlatedAccount.PSObject.Properties.Remove('MiddleName')
-        $correlatedAccount.PSObject.Properties.Remove('LastName')
-        $correlatedAccount.PSObject.Properties.Remove('Title')
-        $splatCompareProperties = @{
-            ReferenceObject  = @($correlatedAccount.PSObject.Properties)
-            DifferenceObject = @($actionContext.Data.PSObject.Properties)
-        }
-        $propertiesChanged = Compare-Object @splatCompareProperties -PassThru | Where-Object { $_.SideIndicator -eq '=>' }
-        $changedPropertiesObject = @{}
-        $changedPropertiesObject['OwnerType'] = $correlatedAccount.OwnerType
-        foreach ($property in $propertiesChanged) {
-            $propertyName = $property.Name
-            $propertyValue = $actionContext.Data.$propertyName
-            $changedPropertiesObject.$propertyName = $propertyValue
-        }
-        if ($propertiesChanged) {
-            $action = 'UpdateAccount'
-        } else {
-            $action = 'NoChanges'
-        }
+        # Always disable the account by setting InActiveDate (hardcoded value to support reconciliation)
+        $action = 'DisableAccount'
     } else {
         $action = 'NotFound'
     }
 
     # Process
     switch ($action) {
-        'UpdateAccount' {
-            Write-Information "Account property(s) required to update: $($propertiesChanged.Name -join ', ')"
+        'DisableAccount' {
+            # Hardcoded disable object (works during reconciliation where actionContext.Data is not available)
+            $disableObject = @{
+                OwnerType = $correlatedAccount.OwnerType
+                InActiveDate = (Get-Date).ToString('yyyy-MM-dd')
+            }
+            
             if (-not($actionContext.DryRun -eq $true)) {
                 Write-Information "Disable Caseware account with accountReference: [$($actionContext.References.Account)]"
                 $splatRestParams = @{
                     Uri     = "$($actionContext.Configuration.BaseUrl)/$($actionContext.Configuration.CustomerId)/ms/caseware-cloud/api/v2/users/$($actionContext.References.Account)"
                     Method  = 'PATCH'
-                    Body = $changedPropertiesObject | ConvertTo-Json
+                    Body = $disableObject | ConvertTo-Json
                     ContentType = 'application/json'
                     Headers = @{
                         Authorization = "Bearer $($responseToken.Token)"
@@ -139,17 +126,7 @@ try {
 
             $outputContext.Success = $true
             $outputContext.AuditLogs.Add([PSCustomObject]@{
-                    Message = "Disable account was successful, Account property(s) updated: [$($propertiesChanged.name -join ',')]"
-                    IsError = $false
-                })
-            break
-        }
-
-        'NoChanges' {
-            Write-Information "No changes to Caseware account with accountReference: [$($actionContext.References.Account)]"
-            $outputContext.Success = $true
-            $outputContext.AuditLogs.Add([PSCustomObject]@{
-                    Message = 'No changes will be made to the account during enforcement'
+                    Message = "Disable account was successful. InActiveDate set to: [$($disableObject.InActiveDate)]"
                     IsError = $false
                 })
             break
