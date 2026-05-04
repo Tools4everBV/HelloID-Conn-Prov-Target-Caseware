@@ -105,6 +105,7 @@ try {
             # Hardcoded disable object (works during reconciliation where actionContext.Data is not available)
             $disableObject = @{
                 OwnerType = $correlatedAccount.OwnerType
+                 Type = "I"  # A = Active, I = Inactive
                 InActiveDate = (Get-Date).ToString('yyyy-MM-dd')
             }
             
