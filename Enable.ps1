@@ -105,6 +105,7 @@ try {
             # Hardcoded enable object (works during reconciliation where actionContext.Data is not available)
             $enableObject = @{
                 OwnerType = $correlatedAccount.OwnerType
+                Type = "A"  # A = Active, I = Inactive
                 InActiveDate = $null
             }
             
