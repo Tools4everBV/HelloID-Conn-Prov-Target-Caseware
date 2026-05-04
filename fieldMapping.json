@@ -165,7 +165,7 @@
             "Create"
           ],
           "MappingMode": "Complex",
-          "Value": "\"function getEmail() {\\r\\n    let mail = '';\\r\\n    if (typeof Person.Accounts._238d9c9216aa4027a5e78d31fc75cbad.mail !== 'undefined' && Person.Accounts._238d9c9216aa4027a5e78d31fc75cbad.mail) {\\r\\n        mail = Person.Accounts._238d9c9216aa4027a5e78d31fc75cbad.mail;\\r\\n    }\\r\\n    return mail;\\r\\n}\\r\\ngetEmail()\"",
+          "Value": "\"function getEmail() {\\r\\n    let mail = '';\\r\\n    if (typeof Person.Accounts.MicrosoftActiveDirectory.mail !== 'undefined' && Person.Accounts.MicrosoftActiveDirectory.mail) {\\r\\n        mail = Person.Accounts.MicrosoftActiveDirectory.mail;\\r\\n    }\\r\\n    return mail;\\r\\n}\\r\\ngetEmail()\"",
           "UsedInNotifications": true,
           "StoreInAccountData": true
         }
