@@ -13,11 +13,15 @@ All notable changes to this project will be documented in this file. The format 
   - To manage roles
 - Permissions groups
   - To manage groups
-    
-### Changed
-- fieldMapping.json
-  - Added extra fields enable and disable Caseware accounts.
-    
+
 ## [1.0.0] - 22-08-2025
 
 This is the first official release of _HelloID-Conn-Prov-Target-Caseware_. This release is based on template version _v3.1.0_.
+
+### Added
+
+### Changed
+
+### Deprecated
+
+### Removed
