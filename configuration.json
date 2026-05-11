@@ -5,6 +5,7 @@
         "defaultValue": "",
         "templateOptions": {
             "label": "BaseUrl",
+            "placeholder": "https://nl.casewarecloud.com",
             "description": "The URL to the API.",
             "required": true
         }
@@ -36,7 +37,7 @@
         "defaultValue": "",
         "templateOptions": {
             "label": "CustomerId",
-            "description": "The CustomerId to connect to the API",
+            "description": "The CustomerId to connect to the API (Name of organization)",
             "required": true
         }
     }

@@ -1,7 +1,7 @@
-################################################################
-# HelloID-Conn-Prov-Target-Caseware-GrantPermission-Group
+#################################################
+# HelloID-Conn-Prov-Target-Caseware-Enable
 # PowerShell V2
-################################################################
+#################################################
 
 # Enable TLS1.2
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor [System.Net.SecurityProtocolType]::Tls12
@@ -37,9 +37,28 @@ function Resolve-CasewareError {
         Write-Output $httpErrorObj
     }
 }
+
+function ConvertTo-HelloIDAccountObject {
+    [CmdletBinding()]
+    param (
+        $CaseWareAccountObject
+    )
+
+    $helloIDAccountObject = [PSCustomObject]@{
+        LastName   = $CaseWareAccountObject.LastName
+        FirstName  = $CaseWareAccountObject.FirstName
+        MiddleName = $CaseWareAccountObject.MiddleName
+        Email      = $CaseWareAccountObject.Email
+        Title      = $CaseWareAccountObject.Title
+        CWGuid     = $CaseWareAccountObject.CWGuid
+        OwnerType  = $CaseWareAccountObject.OwnerType
+        Type       = $CaseWareAccountObject.Type
+    }
+
+    Write-Output $helloIDAccountObject
+}
 #endregion
 
-# Begin
 try {
     # Verify if [aRef] has a value
     if ([string]::IsNullOrEmpty($($actionContext.References.Account))) {
@@ -67,48 +86,51 @@ try {
             Authorization = "Bearer $($responseToken.Token)"
         }
     }
-    $correlatedAccount = Invoke-RestMethod @splatRestParams
+    $response = Invoke-RestMethod @splatRestParams
+    $correlatedAccount = ConvertTo-HelloIDAccountObject -CaseWareAccountObject $response
 
+    # Make sure to filter out arrays from $outputContext.Data (If this is not mapped to type Array in the fieldmapping).
+    $outputContext.PreviousData = $correlatedAccount
+    
     if ($null -ne $correlatedAccount) {
-        $action = 'GrantPermission'
-    }
-    else {
+        # Always enable the account by clearing InActiveDate (hardcoded value to support reconciliation)
+        $action = 'EnableAccount'
+    } else {
         $action = 'NotFound'
     }
 
     # Process
     switch ($action) {
-        'GrantPermission' {
-            if (-not($actionContext.DryRun -eq $True)) {
-                Write-Information "Granting Caseware permission: [$($actionContext.PermissionDisplayName)] - [$($actionContext.References.Permission.Reference)]"
-                $peoplearraylist = @($actionContext.References.Account)
+        'EnableAccount' {
+            # Hardcoded enable object (works during reconciliation where actionContext.Data is not available)
+            $enableObject = @{
+                OwnerType = $correlatedAccount.OwnerType
+                Type = "A"  # A = Active, I = Inactive
+                InActiveDate = $null
+            }
+            
+            if (-not($actionContext.DryRun -eq $true)) {
+                Write-Information "Enable Caseware account with accountReference: [$($actionContext.References.Account)]"
                 $splatRestParams = @{
-                    Uri         = "$($actionContext.Configuration.BaseUrl)/$($actionContext.Configuration.CustomerId)/ms/caseware-cloud/api/v2/groups/$($actionContext.References.Permission.Reference)/user-assignments"
-                    Method      = 'PATCH'
-                    Body        = @{
-                        isRemove = $false
-                        people   = $peoplearraylist
-                    } | ConvertTo-Json
+                    Uri     = "$($actionContext.Configuration.BaseUrl)/$($actionContext.Configuration.CustomerId)/ms/caseware-cloud/api/v2/users/$($actionContext.References.Account)"
+                    Method  = 'PATCH'
+                    Body = $enableObject | ConvertTo-Json
                     ContentType = 'application/json'
-                    Headers     = @{
+                    Headers = @{
                         Authorization = "Bearer $($responseToken.Token)"
                     }
                 }
                 $null = Invoke-RestMethod @splatRestParams
-
-                $outputContext.Success = $true
-                $outputContext.AuditLogs.Add([PSCustomObject]@{
-                    Message = "Grant permission [$($actionContext.PermissionDisplayName)] was successful"
-                    IsError = $false
-                })
             } else {
-                Write-Information "[DryRun] Grant Caseware permission: [$($actionContext.PermissionDisplayName)] - [$($actionContext.References.Permission.Reference)], will be executed during enforcement"
-                $outputContext.Success = $true
-                $outputContext.AuditLogs.Add([PSCustomObject]@{
-                    Message = "Grant permission [$($actionContext.PermissionDisplayName)] will be granted."
+                Write-Information "[DryRun] Enable Caseware account with accountReference: [$($actionContext.References.Account)], will be executed during enforcement"
+            }
+
+            $outputContext.Success = $true
+            $outputContext.AuditLogs.Add([PSCustomObject]@{
+                    Message = "Enable account was successful. InActiveDate has been cleared."
                     IsError = $false
                 })
-            }
+            break
         }
 
         'NotFound' {
@@ -121,18 +143,16 @@ try {
             break
         }
     }
-}
-catch {
-    $outputContext.success = $false
+} catch {
+    $outputContext.Success  = $false
     $ex = $PSItem
     if ($($ex.Exception.GetType().FullName -eq 'Microsoft.PowerShell.Commands.HttpResponseException') -or
         $($ex.Exception.GetType().FullName -eq 'System.Net.WebException')) {
         $errorObj = Resolve-CasewareError -ErrorObject $ex
-        $auditMessage = "Could not grant Caseware permission. Error: $($errorObj.FriendlyMessage)"
+        $auditMessage = "Could not enable Caseware account. Error: $($errorObj.FriendlyMessage)"
         Write-Warning "Error at Line '$($errorObj.ScriptLineNumber)': $($errorObj.Line). Error: $($errorObj.ErrorDetails)"
-    }
-    else {
-        $auditMessage = "Could not grant Caseware permission. Error: $($_.Exception.Message)"
+    } else {
+        $auditMessage = "Could not enable Caseware account. Error: $($ex.Exception.Message)"
         Write-Warning "Error at Line '$($ex.InvocationInfo.ScriptLineNumber)': $($ex.InvocationInfo.Line). Error: $($ex.Exception.Message)"
     }
     $outputContext.AuditLogs.Add([PSCustomObject]@{

@@ -58,7 +58,7 @@ try {
     do {
         Write-Information "Getting page: $page"
         $splatRestParams = @{
-            Uri     = "$($actionContext.Configuration.BaseUrl)/$($actionContext.Configuration.CustomerId)/ms/caseware-cloud/api/v2/groups?pageSize=$pageSize&page=$page"
+            Uri     = "$($actionContext.Configuration.BaseUrl)/$($actionContext.Configuration.CustomerId)/ms/caseware-cloud/api/v2/roles?pageSize=$pageSize&page=$page"
             Method  = 'GET'
             Headers = @{
                 Authorization = "Bearer $($responseToken.Token)"
@@ -66,12 +66,12 @@ try {
         }
         $response = Invoke-RestMethod @splatRestParams
         if ($null -ne $response -and $response.Count -gt 0) {
-            foreach ($group in $response) {
+            foreach ($role in $response) {
                 $outputContext.Permissions.Add(
                     @{
-                        DisplayName    = $group.briefdescription
+                        DisplayName    = $role.Name
                         Identification = @{
-                            Reference = $group.CWGuid
+                            Reference = $role.CWGuid
                         }
                     }
                 )

@@ -1,5 +1,5 @@
 ################################################################
-# HelloID-Conn-Prov-Target-Caseware-GrantPermission-Group
+# HelloID-Conn-Prov-Target-Caseware-RevokePermission-Group
 # PowerShell V2
 ################################################################
 
@@ -70,7 +70,7 @@ try {
     $correlatedAccount = Invoke-RestMethod @splatRestParams
 
     if ($null -ne $correlatedAccount) {
-        $action = 'GrantPermission'
+        $action = 'RevokePermission'
     }
     else {
         $action = 'NotFound'
@@ -78,37 +78,53 @@ try {
 
     # Process
     switch ($action) {
-        'GrantPermission' {
+        'RevokePermission' {
             if (-not($actionContext.DryRun -eq $True)) {
-                Write-Information "Granting Caseware permission: [$($actionContext.PermissionDisplayName)] - [$($actionContext.References.Permission.Reference)]"
-                $peoplearraylist = @($actionContext.References.Account)
-                $splatRestParams = @{
-                    Uri         = "$($actionContext.Configuration.BaseUrl)/$($actionContext.Configuration.CustomerId)/ms/caseware-cloud/api/v2/groups/$($actionContext.References.Permission.Reference)/user-assignments"
-                    Method      = 'PATCH'
-                    Body        = @{
-                        isRemove = $false
-                        people   = $peoplearraylist
-                    } | ConvertTo-Json
-                    ContentType = 'application/json'
-                    Headers     = @{
-                        Authorization = "Bearer $($responseToken.Token)"
+                try {
+                    Write-Information "Revoking Caseware permission: [$($actionContext.PermissionDisplayName)] - [$($actionContext.References.Permission.Reference)]"
+                    $peoplearraylist = @($actionContext.References.Account)
+                    $splatRestParams = @{
+                        Uri         = "$($actionContext.Configuration.BaseUrl)/$($actionContext.Configuration.CustomerId)/ms/caseware-cloud/api/v2/groups/$($actionContext.References.Permission.Reference)/user-assignments"
+                        Method      = 'PATCH'
+                        Body        = @{
+                            isRemove = $true
+                            people   = $peoplearraylist
+                        } | ConvertTo-Json
+                        ContentType = 'application/json'
+                        Headers     = @{
+                            Authorization = "Bearer $($responseToken.Token)"
+                        }
                     }
-                }
-                $null = Invoke-RestMethod @splatRestParams
+                    $null = Invoke-RestMethod @splatRestParams 
+                  
 
-                $outputContext.Success = $true
-                $outputContext.AuditLogs.Add([PSCustomObject]@{
-                    Message = "Grant permission [$($actionContext.PermissionDisplayName)] was successful"
-                    IsError = $false
-                })
-            } else {
-                Write-Information "[DryRun] Grant Caseware permission: [$($actionContext.PermissionDisplayName)] - [$($actionContext.References.Permission.Reference)], will be executed during enforcement"
-                $outputContext.Success = $true
-                $outputContext.AuditLogs.Add([PSCustomObject]@{
-                    Message = "Grant permission [$($actionContext.PermissionDisplayName)] will be granted."
-                    IsError = $false
-                })
-            }
+                    $outputContext.Success = $true
+                    $outputContext.AuditLogs.Add([PSCustomObject]@{
+                            Message = "Revoke permission [$($actionContext.PermissionDisplayName)] was successful"
+                            IsError = $false
+                        })
+
+                }
+                catch {
+                    if ($_.Exception.Response.StatusCode -eq 404) {
+                        $outputContext.Success = $true
+                        $outputContext.AuditLogs.Add([PSCustomObject]@{
+                                Message = "Revoke permission [$($actionContext.PermissionDisplayName)] was already Revokeed."
+                                IsError = $false
+                            })
+                    }
+                    else {
+                        throw $_
+                    }  
+                }
+            }   else {
+                        Write-Information "[DryRun] Revoke Caseware permission: [$($actionContext.PermissionDisplayName)] - [$($actionContext.References.Permission.Reference)], will be executed during enforcement"
+                          $outputContext.Success = $true
+                          $outputContext.AuditLogs.Add([PSCustomObject]@{
+                                Message = "Revoke permission [$($actionContext.PermissionDisplayName)] will be Revokeed."
+                                IsError = $false
+                            })
+                    }
         }
 
         'NotFound' {
@@ -128,11 +144,11 @@ catch {
     if ($($ex.Exception.GetType().FullName -eq 'Microsoft.PowerShell.Commands.HttpResponseException') -or
         $($ex.Exception.GetType().FullName -eq 'System.Net.WebException')) {
         $errorObj = Resolve-CasewareError -ErrorObject $ex
-        $auditMessage = "Could not grant Caseware permission. Error: $($errorObj.FriendlyMessage)"
+        $auditMessage = "Could not Revoke Caseware permission. Error: $($errorObj.FriendlyMessage)"
         Write-Warning "Error at Line '$($errorObj.ScriptLineNumber)': $($errorObj.Line). Error: $($errorObj.ErrorDetails)"
     }
     else {
-        $auditMessage = "Could not grant Caseware permission. Error: $($_.Exception.Message)"
+        $auditMessage = "Could not Revoke Caseware permission. Error: $($_.Exception.Message)"
         Write-Warning "Error at Line '$($ex.InvocationInfo.ScriptLineNumber)': $($ex.InvocationInfo.Line). Error: $($ex.Exception.Message)"
     }
     $outputContext.AuditLogs.Add([PSCustomObject]@{

@@ -1,7 +1,7 @@
-#################################################################
+################################################################
 # HelloID-Conn-Prov-Target-Caseware-RevokePermission-Group
 # PowerShell V2
-#################################################################
+################################################################
 
 # Enable TLS1.2
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor [System.Net.SecurityProtocolType]::Tls12
@@ -71,63 +71,72 @@ try {
 
     if ($null -ne $correlatedAccount) {
         $action = 'RevokePermission'
-    } else {
+    }
+    else {
         $action = 'NotFound'
     }
 
     # Process
     switch ($action) {
         'RevokePermission' {
-            if (-not($actionContext.DryRun -eq $true)) {
+            if (-not($actionContext.DryRun -eq $True)) {
                 Write-Information "Revoking Caseware permission: [$($actionContext.PermissionDisplayName)] - [$($actionContext.References.Permission.Reference)]"
+                $peoplearraylist = @($actionContext.References.Account)
                 $splatRestParams = @{
-                    Uri     = "$($actionContext.Configuration.BaseUrl)/$($actionContext.Configuration.CustomerId)/ms/caseware-cloud/api/v2/users/$($actionContext.References.Account)/role-assignments"
-                    Method  = 'PATCH'
-                    Body = @{
-                        roleIds  = @("$($actionContext.References.Permission.Reference)")
+                    Uri         = "$($actionContext.Configuration.BaseUrl)/$($actionContext.Configuration.CustomerId)/ms/caseware-cloud/api/v2/groups/$($actionContext.References.Permission.Reference)/user-assignments"
+                    Method      = 'PATCH'
+                    Body        = @{
                         isRemove = $true
+                        people   = $peoplearraylist
                     } | ConvertTo-Json
                     ContentType = 'application/json'
-                    Headers = @{
+                    Headers     = @{
                         Authorization = "Bearer $($responseToken.Token)"
                     }
                 }
                 $null = Invoke-RestMethod @splatRestParams
-            } else {
-                Write-Information "[DryRun] Revoke Caseware permission: [$($actionContext.PermissionDisplayName)] - [$($actionContext.References.Permission.Reference)], will be executed during enforcement"
-            }
 
-            $outputContext.Success = $true
-            $outputContext.AuditLogs.Add([PSCustomObject]@{
+                $outputContext.Success = $true
+                $outputContext.AuditLogs.Add([PSCustomObject]@{
                     Message = "Revoke permission [$($actionContext.PermissionDisplayName)] was successful"
                     IsError = $false
                 })
+            } else {
+                Write-Information "[DryRun] Revoke Caseware permission: [$($actionContext.PermissionDisplayName)] - [$($actionContext.References.Permission.Reference)], will be executed during enforcement"
+                $outputContext.Success = $true
+                $outputContext.AuditLogs.Add([PSCustomObject]@{
+                    Message = "Revoke permission [$($actionContext.PermissionDisplayName)] will be revoked."
+                    IsError = $false
+                })
+            }
         }
 
         'NotFound' {
             Write-Information "Caseware account: [$($actionContext.References.Account)] could not be found, indicating that it may have been deleted"
-            $outputContext.Success = $true
+            $outputContext.Success = $false
             $outputContext.AuditLogs.Add([PSCustomObject]@{
                     Message = "Caseware account: [$($actionContext.References.Account)] could not be found, indicating that it may have been deleted"
-                    IsError = $false
+                    IsError = $true
                 })
             break
         }
     }
-} catch {
+}
+catch {
     $outputContext.success = $false
     $ex = $PSItem
     if ($($ex.Exception.GetType().FullName -eq 'Microsoft.PowerShell.Commands.HttpResponseException') -or
         $($ex.Exception.GetType().FullName -eq 'System.Net.WebException')) {
         $errorObj = Resolve-CasewareError -ErrorObject $ex
-        $auditMessage = "Could not revoke Caseware permission. Error: $($errorObj.FriendlyMessage)"
+        $auditMessage = "Could not Revoke Caseware permission. Error: $($errorObj.FriendlyMessage)"
         Write-Warning "Error at Line '$($errorObj.ScriptLineNumber)': $($errorObj.Line). Error: $($errorObj.ErrorDetails)"
-    } else {
-        $auditMessage = "Could not revoke Caseware permission. Error: $($_.Exception.Message)"
+    }
+    else {
+        $auditMessage = "Could not Revoke Caseware permission. Error: $($_.Exception.Message)"
         Write-Warning "Error at Line '$($ex.InvocationInfo.ScriptLineNumber)': $($ex.InvocationInfo.Line). Error: $($ex.Exception.Message)"
     }
     $outputContext.AuditLogs.Add([PSCustomObject]@{
-        Message = $auditMessage
-        IsError = $true
-    })
+            Message = $auditMessage
+            IsError = $true
+        })
 }

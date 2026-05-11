@@ -44,10 +44,10 @@ The following features are available:
 | Feature                                   | Supported | Actions                                 | Remarks |
 | ----------------------------------------- | --------- | --------------------------------------- | ------- |
 | **Account Lifecycle**                     | ✅         | Create, Update, Enable, Disable, Delete |         |
-| **Permissions**                           | ❌         | -                                       |         |
+| **Permissions**                           | ✅         | -                                       |         |
 | **Resources**                             | ❌         | -                                       |         |
 | **Entitlement Import: Accounts**          | ✅         | -                                       |         |
-| **Entitlement Import: Permissions**       | ✅            | -                                       |         |
+| **Entitlement Import: Permissions**       | ❌            | -                                       |         |
 | **Governance Reconciliation Resolutions** | ✅         | -                                       |         |
 
 ## Getting started
@@ -90,17 +90,13 @@ The account reference is populated with the property `CWGuid` property from _Cas
 
 Within the _create_ lifecycle action, initial validation and correlation of the user account is based on the `email` attribute. The `accountReference` will be the ` CWGuid` property.
 
-### No account creation
-
-This connector does not create new accounts. The _create_ lifecycle actions only performs account correlation. Subsequently; the `$actionContext.DryRun` logic has been removed.
-
 ### `OwnerType` is a required property when updating accounts
 
 When performing an update, the OwnerType field must be present and valid in the payload.
 
-### No property to enable or disable
+### Concurrent action configuration
 
-There's no property to _enable_ or _disable_ the user account. Caseware does provide a _CanLogin_ property. However, its not possible to change the value of this property since its tied directly to an external user synchronization.
+Needs to be set on 2
 
 ### Memberships / roles
 
@@ -117,7 +113,9 @@ The following endpoints are used by the connector
 | {baseUrl}/ms/caseware-cloud/api/v2/auth/token | Retrieve oAuth token |
 | {baseUrl}/ms/caseware-cloud/api/v2/users      | User related actions |
 | {baseUrl}/ms/caseware-cloud/api/v2/users/:id/role-assignments      | Grant / revoke role |
+| {baseUrl}/ms/caseware-cloud/api/v2/groups/{groupId}/user-assignments      | Grant / revoke role |
 | {baseUrl}/ms/caseware-cloud/api/v2/roles      | Retrieve available roles |
+| {baseUrl}/ms/caseware-cloud/api/v2/groups      | Retrieve available groups |
 
 ## Getting help
 
