@@ -34,14 +34,15 @@ function Resolve-CasewareError {
         }
         try {
             $errorDetailsObject = ($httpErrorObj.ErrorDetails | ConvertFrom-Json)
-            $httpErrorObj.FriendlyMessage = $httpErrorObj.ErrorDetails
-        } catch {
-            $httpErrorObj.FriendlyMessage = "Error: [$($httpErrorObj.ErrorDetails)]"
-            Write-Warning $_.Exception.Message
+            $httpErrorObj.FriendlyMessage = ($errorDetailsObject.errors | Select-Object -First 1).message
+        }
+        catch {
+            $httpErrorObj.FriendlyMessage = $httpErrorObj.ErrorDetails 
         }
         Write-Output $httpErrorObj
     }
 }
+
 
 function ConvertTo-HelloIDAccountObject {
     [CmdletBinding()]
@@ -66,7 +67,12 @@ try {
     # Initial Assignments
     $outputContext.AccountReference = 'Currently not available'
 
+    #Retrieving token
     Write-Information 'Retrieving bearer token'
+
+    $maxRetry = 10
+    $retryCount = 0
+
     $splatRetrieveTokenParams = @{
         Uri         = "$($actionContext.Configuration.BaseUrl)/$($actionContext.Configuration.CustomerId)/ms/caseware-cloud/api/v2/auth/token"
         Method      = 'POST'
@@ -77,7 +83,30 @@ try {
             Language     = 'en'
         } | ConvertTo-Json
     }
-    $responseToken = Invoke-RestMethod @splatRetrieveTokenParams
+
+    do {
+        try {
+            $retryCount++
+            $responseToken = Invoke-RestMethod @splatRetrieveTokenParams
+        }
+        catch {
+            #wait 3 seconds before retry
+            if ($_.exception.response.statuscode -eq "429") {
+                start-sleep 3
+            }
+            else {
+                throw "$($_)"
+            }
+        }
+    } until (
+        #Retry x times or until responsetoken is returned
+        ($retryCount -gt $maxRetry) -OR ($null -ne $responseToken)
+    )        
+
+    #Throw error when failed within max retries
+    if ($null -eq $responseToken) {
+        Throw "Failed to retrieve bearer token after $retryCount retries."
+    }
 
     # Validate correlation configuration
     if ($actionContext.CorrelationConfiguration.Enabled) {
@@ -125,13 +154,13 @@ try {
     switch ($action) {
         'CreateAccount' {
             $splatCreateParams = @{
-                Uri    = "$($actionContext.Configuration.BaseUrl)/$($actionContext.Configuration.CustomerId)/ms/caseware-cloud/api/v2/users"
-                Method = 'POST'
+                Uri     = "$($actionContext.Configuration.BaseUrl)/$($actionContext.Configuration.CustomerId)/ms/caseware-cloud/api/v2/users"
+                Method  = 'POST'
                 Headers = @{
-                    Authorization = "Bearer $($responseToken.Token)"
+                    Authorization  = "Bearer $($responseToken.Token)"
                     'Content-Type' = 'application/json'
                 }
-                Body   = $actionContext.Data | ConvertTo-Json
+                Body    = $actionContext.Data | ConvertTo-Json
             }
             if (-not($actionContext.DryRun -eq $true)) {
                 Write-Information 'Creating and correlating Caseware account'
@@ -139,7 +168,8 @@ try {
                 $outputContext.Data = $createdAccount
                 $outputContext.AccountReference = $createdAccount.CWGuid
                 $auditLogMessage = "Create account was successful. AccountReference is: [$($outputContext.AccountReference)]"
-            } else {
+            }
+            else {
                 Write-Information '[DryRun] Create and correlate Caseware account, will be executed during enforcement'
                 $auditLogMessage = "DryRun: Create account would be executed."
             }
@@ -157,10 +187,10 @@ try {
 
     $outputContext.success = $true
     $outputContext.AuditLogs.Add([PSCustomObject]@{
-        Action  = $action
-        Message = $auditLogMessage
-        IsError = $false
-    })
+            Action  = $action
+            Message = $auditLogMessage
+            IsError = $false
+        })
 }
 catch {
     $outputContext.success = $false
@@ -176,7 +206,7 @@ catch {
         Write-Warning "Error at Line '$($ex.InvocationInfo.ScriptLineNumber)': $($ex.InvocationInfo.Line). Error: $($ex.Exception.Message)"
     }
     $outputContext.AuditLogs.Add([PSCustomObject]@{
-        Message = $auditLogMessage
-        IsError = $true
-    })
+            Message = $auditLogMessage
+            IsError = $true
+        })
 }

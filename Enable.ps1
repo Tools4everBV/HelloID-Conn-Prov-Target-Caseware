@@ -32,11 +32,17 @@ function Resolve-CasewareError {
                 }
             }
         }
-        $errorDetailsObject = ($httpErrorObj.ErrorDetails | ConvertFrom-Json)
-        $httpErrorObj.FriendlyMessage = ($errorDetailsObject.errors | Select-Object -First 1).message
+        try {
+            $errorDetailsObject = ($httpErrorObj.ErrorDetails | ConvertFrom-Json)
+            $httpErrorObj.FriendlyMessage = ($errorDetailsObject.errors | Select-Object -First 1).message
+        }
+        catch {
+            $httpErrorObj.FriendlyMessage = $httpErrorObj.ErrorDetails 
+        }
         Write-Output $httpErrorObj
     }
 }
+
 
 function ConvertTo-HelloIDAccountObject {
     [CmdletBinding()]
@@ -65,7 +71,12 @@ try {
         throw 'The account reference could not be found'
     }
 
+    #Retrieving token
     Write-Information 'Retrieving bearer token'
+
+    $maxRetry = 10
+    $retryCount = 0
+
     $splatRetrieveTokenParams = @{
         Uri         = "$($actionContext.Configuration.BaseUrl)/$($actionContext.Configuration.CustomerId)/ms/caseware-cloud/api/v2/auth/token"
         Method      = 'POST'
@@ -76,7 +87,30 @@ try {
             Language     = 'en'
         } | ConvertTo-Json
     }
-    $responseToken = Invoke-RestMethod @splatRetrieveTokenParams
+
+    do {
+        try {
+            $retryCount++
+            $responseToken = Invoke-RestMethod @splatRetrieveTokenParams
+        }
+        catch {
+            #wait 3 seconds before retry
+            if ($_.exception.response.statuscode -eq "429") {
+                start-sleep 3
+            }
+            else {
+                throw "$($_)"
+            }
+        }
+    } until (
+        #Retry x times or until responsetoken is returned
+        ($retryCount -gt $maxRetry) -OR ($null -ne $responseToken)
+    )        
+
+    #Throw error when failed within max retries
+    if ($null -eq $responseToken) {
+        Throw "Failed to retrieve bearer token after $retryCount retries."
+    }
 
     Write-Information 'Verifying if a Caseware account exists'
     $splatRestParams = @{
@@ -89,13 +123,13 @@ try {
     $response = Invoke-RestMethod @splatRestParams
     $correlatedAccount = ConvertTo-HelloIDAccountObject -CaseWareAccountObject $response
 
-    # Make sure to filter out arrays from $outputContext.Data (If this is not mapped to type Array in the fieldmapping).
+    # Make sure to filter out arrays from $outputContext.Data (If this is not mapped to type Array in the fieldmapping). This is not supported by HelloID.
     $outputContext.PreviousData = $correlatedAccount
-    
     if ($null -ne $correlatedAccount) {
         # Always enable the account by clearing InActiveDate (hardcoded value to support reconciliation)
         $action = 'EnableAccount'
-    } else {
+    }
+    else {
         $action = 'NotFound'
     }
 
@@ -104,24 +138,25 @@ try {
         'EnableAccount' {
             # Hardcoded enable object (works during reconciliation where actionContext.Data is not available)
             $enableObject = @{
-                OwnerType = $correlatedAccount.OwnerType
-                Type = "A"  # A = Active, I = Inactive
+                OwnerType    = $correlatedAccount.OwnerType
+                Type         = "A"  # A = Active, I = Inactive
                 InActiveDate = $null
             }
             
             if (-not($actionContext.DryRun -eq $true)) {
                 Write-Information "Enable Caseware account with accountReference: [$($actionContext.References.Account)]"
                 $splatRestParams = @{
-                    Uri     = "$($actionContext.Configuration.BaseUrl)/$($actionContext.Configuration.CustomerId)/ms/caseware-cloud/api/v2/users/$($actionContext.References.Account)"
-                    Method  = 'PATCH'
-                    Body = $enableObject | ConvertTo-Json
+                    Uri         = "$($actionContext.Configuration.BaseUrl)/$($actionContext.Configuration.CustomerId)/ms/caseware-cloud/api/v2/users/$($actionContext.References.Account)"
+                    Method      = 'PATCH'
+                    Body        = $enableObject | ConvertTo-Json
                     ContentType = 'application/json'
-                    Headers = @{
+                    Headers     = @{
                         Authorization = "Bearer $($responseToken.Token)"
                     }
                 }
                 $null = Invoke-RestMethod @splatRestParams
-            } else {
+            }
+            else {
                 Write-Information "[DryRun] Enable Caseware account with accountReference: [$($actionContext.References.Account)], will be executed during enforcement"
             }
 
@@ -143,15 +178,17 @@ try {
             break
         }
     }
-} catch {
-    $outputContext.Success  = $false
+}
+catch {
+    $outputContext.Success = $false
     $ex = $PSItem
     if ($($ex.Exception.GetType().FullName -eq 'Microsoft.PowerShell.Commands.HttpResponseException') -or
         $($ex.Exception.GetType().FullName -eq 'System.Net.WebException')) {
         $errorObj = Resolve-CasewareError -ErrorObject $ex
         $auditMessage = "Could not enable Caseware account. Error: $($errorObj.FriendlyMessage)"
         Write-Warning "Error at Line '$($errorObj.ScriptLineNumber)': $($errorObj.Line). Error: $($errorObj.ErrorDetails)"
-    } else {
+    }
+    else {
         $auditMessage = "Could not enable Caseware account. Error: $($ex.Exception.Message)"
         Write-Warning "Error at Line '$($ex.InvocationInfo.ScriptLineNumber)': $($ex.InvocationInfo.Line). Error: $($ex.Exception.Message)"
     }
