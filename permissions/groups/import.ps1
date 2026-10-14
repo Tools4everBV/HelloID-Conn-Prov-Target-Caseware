@@ -116,7 +116,7 @@ try {
     do {
         Write-Information "Getting page: $page"
         $splatRestParams = @{
-            Uri     = "$($actionContext.Configuration.BaseUrl)/$($actionContext.Configuration.CustomerId)/ms/caseware-cloud/api/v2/roles?pageSize=$pageSize&page=$page"
+            Uri     = "$($actionContext.Configuration.BaseUrl)/$($actionContext.Configuration.CustomerId)/ms/caseware-cloud/api/v2/groups?pageSize=$pageSize&page=$page"
             Method  = 'GET'
             Headers = @{
                 Authorization = "Bearer $($responseToken.Token)"
