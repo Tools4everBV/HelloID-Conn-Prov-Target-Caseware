@@ -32,8 +32,13 @@ function Resolve-CasewareError {
                 }
             }
         }
-        $errorDetailsObject = ($httpErrorObj.ErrorDetails | ConvertFrom-Json)
-        $httpErrorObj.FriendlyMessage = ($errorDetailsObject.errors | Select-Object -First 1).message
+        try {
+            $errorDetailsObject = ($httpErrorObj.ErrorDetails | ConvertFrom-Json)
+            $httpErrorObj.FriendlyMessage = ($errorDetailsObject.errors | Select-Object -First 1).message
+        }
+        catch {
+            $httpErrorObj.FriendlyMessage = $httpErrorObj.ErrorDetails 
+        }
         Write-Output $httpErrorObj
     }
 }
@@ -45,7 +50,12 @@ try {
 
     Write-Information "Starting Caseware permission entitlement import with pagesize set to: $($pageSize)"
 
+#Retrieving token
     Write-Information 'Retrieving bearer token'
+
+    $maxRetry = 10
+    $retryCount = 0
+
     $splatRetrieveTokenParams = @{
         Uri         = "$($actionContext.Configuration.BaseUrl)/$($actionContext.Configuration.CustomerId)/ms/caseware-cloud/api/v2/auth/token"
         Method      = 'POST'
@@ -56,7 +66,30 @@ try {
             Language     = 'en'
         } | ConvertTo-Json
     }
-    $responseToken = Invoke-RestMethod @splatRetrieveTokenParams
+
+    do {
+        try {
+            $retryCount++
+            $responseToken = Invoke-RestMethod @splatRetrieveTokenParams
+        }
+        catch {
+            #wait 3 seconds before retry
+            if ($_.exception.response.statuscode -eq "429") {
+                start-sleep 3
+            }
+            else {
+                throw "$($_)"
+            }
+        }
+    } until (
+        #Retry x times or until responsetoken is returned
+        ($retryCount -gt $maxRetry) -OR ($null -ne $responseToken)
+    )        
+
+    #Throw error when failed within max retries
+    if ($null -eq $responseToken) {
+        Throw "Failed to retrieve bearer token after $retryCount retries."
+    }
 
     Write-Information 'Retrieving Caseware users'
     $userList = [System.Collections.Generic.List[object]]::new()
@@ -83,7 +116,7 @@ try {
     do {
         Write-Information "Getting page: $page"
         $splatRestParams = @{
-            Uri     = "$($actionContext.Configuration.BaseUrl)/$($actionContext.Configuration.CustomerId)/ms/caseware-cloud/api/v2/roles?pageSize=$pageSize&page=$page"
+            Uri     = "$($actionContext.Configuration.BaseUrl)/$($actionContext.Configuration.CustomerId)/ms/caseware-cloud/api/v2/groups?pageSize=$pageSize&page=$page"
             Method  = 'GET'
             Headers = @{
                 Authorization = "Bearer $($responseToken.Token)"

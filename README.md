@@ -94,9 +94,14 @@ Within the _create_ lifecycle action, initial validation and correlation of the 
 
 When performing an update, the OwnerType field must be present and valid in the payload.
 
+### Token rate limit
+
+A rate limit applies for retrieving tokens. 
+The connector automatically handles this by retrying token retrieval up to 10 times if an attempt fails with a `429 - too many requests error`, with a 3-second delay between each attempt.
+
 ### Concurrent action configuration
 
-Needs to be set on 2
+Needs to be set on 1
 
 ### Memberships / roles
 

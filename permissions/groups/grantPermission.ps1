@@ -32,11 +32,17 @@ function Resolve-CasewareError {
                 }
             }
         }
-        $errorDetailsObject = ($httpErrorObj.ErrorDetails | ConvertFrom-Json)
-        $httpErrorObj.FriendlyMessage = ($errorDetailsObject.errors | Select-Object -First 1).message
+        try {
+            $errorDetailsObject = ($httpErrorObj.ErrorDetails | ConvertFrom-Json)
+            $httpErrorObj.FriendlyMessage = ($errorDetailsObject.errors | Select-Object -First 1).message
+        }
+        catch {
+            $httpErrorObj.FriendlyMessage = $httpErrorObj.ErrorDetails 
+        }
         Write-Output $httpErrorObj
     }
 }
+
 #endregion
 
 # Begin
@@ -46,7 +52,12 @@ try {
         throw 'The account reference could not be found'
     }
 
+    #Retrieving token
     Write-Information 'Retrieving bearer token'
+
+    $maxRetry = 10
+    $retryCount = 0
+
     $splatRetrieveTokenParams = @{
         Uri         = "$($actionContext.Configuration.BaseUrl)/$($actionContext.Configuration.CustomerId)/ms/caseware-cloud/api/v2/auth/token"
         Method      = 'POST'
@@ -57,7 +68,30 @@ try {
             Language     = 'en'
         } | ConvertTo-Json
     }
-    $responseToken = Invoke-RestMethod @splatRetrieveTokenParams
+
+    do {
+        try {
+            $retryCount++
+            $responseToken = Invoke-RestMethod @splatRetrieveTokenParams
+        }
+        catch {
+            #wait 3 seconds before retry
+            if ($_.exception.response.statuscode -eq "429") {
+                start-sleep 3
+            }
+            else {
+                throw "$($_)"
+            }
+        }
+    } until (
+        #Retry x times or until responsetoken is returned
+        ($retryCount -gt $maxRetry) -OR ($null -ne $responseToken)
+    )        
+
+    #Throw error when failed within max retries
+    if ($null -eq $responseToken) {
+        Throw "Failed to retrieve bearer token after $retryCount retries."
+    }
 
     Write-Information 'Verifying if a Caseware account exists'
     $splatRestParams = @{
@@ -80,34 +114,51 @@ try {
     switch ($action) {
         'GrantPermission' {
             if (-not($actionContext.DryRun -eq $True)) {
-                Write-Information "Granting Caseware permission: [$($actionContext.PermissionDisplayName)] - [$($actionContext.References.Permission.Reference)]"
-                $peoplearraylist = @($actionContext.References.Account)
-                $splatRestParams = @{
-                    Uri         = "$($actionContext.Configuration.BaseUrl)/$($actionContext.Configuration.CustomerId)/ms/caseware-cloud/api/v2/groups/$($actionContext.References.Permission.Reference)/user-assignments"
-                    Method      = 'PATCH'
-                    Body        = @{
-                        isRemove = $false
-                        people   = $peoplearraylist
-                    } | ConvertTo-Json
-                    ContentType = 'application/json'
-                    Headers     = @{
-                        Authorization = "Bearer $($responseToken.Token)"
+                try {
+                    Write-Information "Granting Caseware permission: [$($actionContext.PermissionDisplayName)] - [$($actionContext.References.Permission.Reference)]"
+                    $peoplearraylist = @($actionContext.References.Account)
+                    $splatRestParams = @{
+                        Uri         = "$($actionContext.Configuration.BaseUrl)/$($actionContext.Configuration.CustomerId)/ms/caseware-cloud/api/v2/groups/$($actionContext.References.Permission.Reference)/user-assignments"
+                        Method      = 'PATCH'
+                        Body        = @{
+                            isRemove = $false
+                            people   = $peoplearraylist
+                        } | ConvertTo-Json
+                        ContentType = 'application/json'
+                        Headers     = @{
+                            Authorization = "Bearer $($responseToken.Token)"
+                        }
                     }
-                }
-                $null = Invoke-RestMethod @splatRestParams
+                    $null = Invoke-RestMethod @splatRestParams 
+                  
 
-                $outputContext.Success = $true
-                $outputContext.AuditLogs.Add([PSCustomObject]@{
-                    Message = "Grant permission [$($actionContext.PermissionDisplayName)] was successful"
-                    IsError = $false
-                })
-            } else {
+                    $outputContext.Success = $true
+                    $outputContext.AuditLogs.Add([PSCustomObject]@{
+                            Message = "Grant permission [$($actionContext.PermissionDisplayName)] was successful"
+                            IsError = $false
+                        })
+
+                }
+                catch {
+                    if ($_.Exception.Response.StatusCode -eq 404) {
+                        $outputContext.Success = $true
+                        $outputContext.AuditLogs.Add([PSCustomObject]@{
+                                Message = "Grant permission [$($actionContext.PermissionDisplayName)] was already granted."
+                                IsError = $false
+                            })
+                    }
+                    else {
+                        throw $_
+                    }  
+                }
+            }
+            else {
                 Write-Information "[DryRun] Grant Caseware permission: [$($actionContext.PermissionDisplayName)] - [$($actionContext.References.Permission.Reference)], will be executed during enforcement"
                 $outputContext.Success = $true
                 $outputContext.AuditLogs.Add([PSCustomObject]@{
-                    Message = "Grant permission [$($actionContext.PermissionDisplayName)] will be granted."
-                    IsError = $false
-                })
+                        Message = "Grant permission [$($actionContext.PermissionDisplayName)] will be granted."
+                        IsError = $false
+                    })
             }
         }
 

@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com), and this project adheres to [Semantic Versioning](https://semver.org).
 
+## [1.2.0] - 14-10-2026
+
+### Added
+- retry mechanism for token retrieval.
+
+### Changed
+- Edited `Resolve-CasewareError` function to work when response ins't json formatted
+- 'CorrelatedAcount not found' in revoking permission, access will result in a success
+
 ## [1.0.1] - 07-11-2025
 
 ### Added
