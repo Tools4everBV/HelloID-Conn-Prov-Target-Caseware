@@ -32,11 +32,17 @@ function Resolve-CasewareError {
                 }
             }
         }
-        $errorDetailsObject = ($httpErrorObj.ErrorDetails | ConvertFrom-Json)
-        $httpErrorObj.FriendlyMessage = ($errorDetailsObject.errors | Select-Object -First 1).message
+        try {
+            $errorDetailsObject = ($httpErrorObj.ErrorDetails | ConvertFrom-Json)
+            $httpErrorObj.FriendlyMessage = ($errorDetailsObject.errors | Select-Object -First 1).message
+        }
+        catch {
+            $httpErrorObj.FriendlyMessage = $httpErrorObj.ErrorDetails 
+        }
         Write-Output $httpErrorObj
     }
 }
+
 #endregion
 
 try {
@@ -45,7 +51,12 @@ try {
         throw 'The account reference could not be found'
     }
 
+    #Retrieving token
     Write-Information 'Retrieving bearer token'
+
+    $maxRetry = 10
+    $retryCount = 0
+
     $splatRetrieveTokenParams = @{
         Uri         = "$($actionContext.Configuration.BaseUrl)/$($actionContext.Configuration.CustomerId)/ms/caseware-cloud/api/v2/auth/token"
         Method      = 'POST'
@@ -56,8 +67,31 @@ try {
             Language     = 'en'
         } | ConvertTo-Json
     }
-    $responseToken = Invoke-RestMethod @splatRetrieveTokenParams
 
+    do {
+        try {
+            $retryCount++
+            $responseToken = Invoke-RestMethod @splatRetrieveTokenParams
+        }
+        catch {
+            #wait 3 seconds before retry
+            if ($_.exception.response.statuscode -eq "429") {
+                start-sleep 3
+            }
+            else {
+                throw "$($_)"
+            }
+        }
+    } until (
+        #Retry x times or until responsetoken is returned
+        ($retryCount -gt $maxRetry) -OR ($null -ne $responseToken)
+    )        
+
+    #Throw error when failed within max retries
+    if ($null -eq $responseToken) {
+        throw "Failed to retrieve bearer token after $retryCount retries."
+    }
+    
     Write-Information 'Verifying if a Caseware account exists'
     $splatRestParams = @{
         Uri     = "$($actionContext.Configuration.BaseUrl)/$($actionContext.Configuration.CustomerId)/ms/caseware-cloud/api/v2/users/$($actionContext.References.Account)"
@@ -66,11 +100,23 @@ try {
             Authorization = "Bearer $($responseToken.Token)"
         }
     }
-    $correlatedAccount = Invoke-RestMethod @splatRestParams
+
+    try {
+        $correlatedAccount = Invoke-RestMethod @splatRestParams
+    }
+    catch {
+        if ($_.exception.response.statuscode -eq "404") {
+            $correlatedAccount = $null
+        }
+        else {
+            throw "$($_)"
+        }
+    }
 
     if ($null -ne $correlatedAccount) {
         $action = 'DeleteAccount'
-    } else {
+    }
+    else {
         $action = 'NotFound'
     }
 
@@ -87,7 +133,8 @@ try {
                     }
                 }
                 $null = Invoke-RestMethod @splatRestParams
-            } else {
+            }
+            else {
                 Write-Information "[DryRun] Delete Caseware account with accountReference: [$($actionContext.References.Account)], will be executed during enforcement"
             }
 
@@ -109,7 +156,8 @@ try {
             break
         }
     }
-} catch {
+}
+catch {
     $outputContext.success = $false
     $ex = $PSItem
     if ($($ex.Exception.GetType().FullName -eq 'Microsoft.PowerShell.Commands.HttpResponseException') -or
@@ -117,7 +165,8 @@ try {
         $errorObj = Resolve-CasewareError -ErrorObject $ex
         $auditMessage = "Could not delete Caseware account. Error: $($errorObj.FriendlyMessage). Action initiated by: [$($actionContext.Origin)]"
         Write-Warning "Error at Line '$($errorObj.ScriptLineNumber)': $($errorObj.Line). Error: $($errorObj.ErrorDetails)"
-    } else {
+    }
+    else {
         $auditMessage = "Could not delete Caseware account. Error: $($_.Exception.Message). Action initiated by: [$($actionContext.Origin)]"
         Write-Warning "Error at Line '$($ex.InvocationInfo.ScriptLineNumber)': $($ex.InvocationInfo.Line). Error: $($ex.Exception.Message)"
     }

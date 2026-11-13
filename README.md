@@ -8,7 +8,7 @@
 > This repository contains the connector and configuration code only. The implementer is responsible to acquire the connection details such as username, password, certificate, etc. You might even need to sign a contract or agreement with the supplier before implementing this connector. Please contact the client's application manager to coordinate the connector requirements.
 
 <p align="center">
-  <img src="">
+  <img src="https://github.com/Tools4everBV/HelloID-Conn-Prov-Target-Caseware/blob/main/Logo.png?raw=true">
 </p>
 
 ## Table of contents
@@ -24,9 +24,9 @@
     - [Account Reference](#account-reference)
   - [Remarks](#remarks)
     - [Initial validation / correlation based on `email`](#initial-validation--correlation-based-on-email)
-    - [No account creation](#no-account-creation)
     - [`OwnerType` is a required property when updating accounts](#ownertype-is-a-required-property-when-updating-accounts)
-    - [No property to enable or disable](#no-property-to-enable-or-disable)
+    - [Token rate limit](#token-rate-limit)
+    - [Concurrent action configuration](#concurrent-action-configuration)
     - [Memberships / roles](#memberships--roles)
   - [Development resources](#development-resources)
     - [API endpoints](#api-endpoints)
@@ -47,7 +47,7 @@ The following features are available:
 | **Permissions**                           | ✅         | -                                       |         |
 | **Resources**                             | ❌         | -                                       |         |
 | **Entitlement Import: Accounts**          | ✅         | -                                       |         |
-| **Entitlement Import: Permissions**       | ❌            | -                                       |         |
+| **Entitlement Import: Permissions**       | ✅         | -                                       |         |
 | **Governance Reconciliation Resolutions** | ✅         | -                                       |         |
 
 ## Getting started
@@ -67,11 +67,11 @@ The following settings are required to connect to the API.
 
 The correlation configuration is used to specify which properties will be used to match an existing account within _Caseware_ to a person in _HelloID_.
 
-| Setting                   | Value                                                          |
-| ------------------------- | -------------------------------------------------------------- |
-| Enable correlation        | `True`                                                         |
-| Person correlation field  | `PersonContext.Person.Account.Microsoft.ActiveDirectory.Email` |
-| Account correlation field | `Email`                                                        |
+| Setting                   | Value                                            |
+| ------------------------- | ------------------------------------------------ |
+| Enable correlation        | `True`                                           |
+| Person correlation field  | `Person.Account.Microsoft.ActiveDirectory.Email` |
+| Account correlation field | `Email`                                          |
 
 > [!TIP]
 > _For more information on correlation, please refer to our correlation [documentation](https://docs.helloid.com/en/provisioning/target-systems/powershell-v2-target-systems/correlation.html) pages_.
@@ -94,9 +94,14 @@ Within the _create_ lifecycle action, initial validation and correlation of the 
 
 When performing an update, the OwnerType field must be present and valid in the payload.
 
+### Token rate limit
+
+A rate limit applies for retrieving tokens. 
+The connector automatically handles this by retrying token retrieval up to 10 times if an attempt fails with a `429 - too many requests error`, with a 3-second delay between each attempt.
+
 ### Concurrent action configuration
 
-Needs to be set on 2
+Needs to be set on 1
 
 ### Memberships / roles
 
@@ -108,22 +113,19 @@ Groups are assigned through roles. Just like _users_, roles also have a `CWGuid`
 
 The following endpoints are used by the connector
 
-| Endpoint                             | Description          |
-| ------------------------------------ | -------------------- |
-| {baseUrl}/ms/caseware-cloud/api/v2/auth/token | Retrieve oAuth token |
-| {baseUrl}/ms/caseware-cloud/api/v2/users      | User related actions |
-| {baseUrl}/ms/caseware-cloud/api/v2/users/:id/role-assignments      | Grant / revoke role |
-| {baseUrl}/ms/caseware-cloud/api/v2/groups/{groupId}/user-assignments      | Grant / revoke role |
-| {baseUrl}/ms/caseware-cloud/api/v2/roles      | Retrieve available roles |
-| {baseUrl}/ms/caseware-cloud/api/v2/groups      | Retrieve available groups |
+| Endpoint                                                             | Description               |
+| -------------------------------------------------------------------- | ------------------------- |
+| {baseUrl}/ms/caseware-cloud/api/v2/auth/token                        | Retrieve oAuth token      |
+| {baseUrl}/ms/caseware-cloud/api/v2/users                             | User related actions      |
+| {baseUrl}/ms/caseware-cloud/api/v2/users/:id/role-assignments        | Grant / revoke role       |
+| {baseUrl}/ms/caseware-cloud/api/v2/groups/{groupId}/user-assignments | Grant / revoke role       |
+| {baseUrl}/ms/caseware-cloud/api/v2/roles                             | Retrieve available roles  |
+| {baseUrl}/ms/caseware-cloud/api/v2/groups                            | Retrieve available groups |
 
 ## Getting help
 
 > [!TIP]
 > _For more information on how to configure a HelloID PowerShell connector, please refer to our [documentation](https://docs.helloid.com/en/provisioning/target-systems/powershell-v2-target-systems.html) pages_.
-
-> [!TIP]
->  _If you need help, feel free to ask questions on our [forum](https://forum.helloid.com)_.
 
 ## HelloID docs
 
