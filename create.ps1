@@ -43,7 +43,6 @@ function Resolve-CasewareError {
     }
 }
 
-
 function ConvertTo-HelloIDAccountObject {
     [CmdletBinding()]
     param (
@@ -105,7 +104,7 @@ try {
 
     #Throw error when failed within max retries
     if ($null -eq $responseToken) {
-        Throw "Failed to retrieve bearer token after $retryCount retries."
+        throw "Failed to retrieve bearer token after $retryCount retries."
     }
 
     # Validate correlation configuration

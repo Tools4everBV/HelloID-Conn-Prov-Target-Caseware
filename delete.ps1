@@ -89,7 +89,7 @@ try {
 
     #Throw error when failed within max retries
     if ($null -eq $responseToken) {
-        Throw "Failed to retrieve bearer token after $retryCount retries."
+        throw "Failed to retrieve bearer token after $retryCount retries."
     }
     
     Write-Information 'Verifying if a Caseware account exists'
@@ -101,9 +101,10 @@ try {
         }
     }
 
-    try{
+    try {
         $correlatedAccount = Invoke-RestMethod @splatRestParams
-    }catch{
+    }
+    catch {
         if ($_.exception.response.statuscode -eq "404") {
             $correlatedAccount = $null
         }
@@ -114,7 +115,8 @@ try {
 
     if ($null -ne $correlatedAccount) {
         $action = 'DeleteAccount'
-    } else {
+    }
+    else {
         $action = 'NotFound'
     }
 
@@ -131,7 +133,8 @@ try {
                     }
                 }
                 $null = Invoke-RestMethod @splatRestParams
-            } else {
+            }
+            else {
                 Write-Information "[DryRun] Delete Caseware account with accountReference: [$($actionContext.References.Account)], will be executed during enforcement"
             }
 
@@ -153,7 +156,8 @@ try {
             break
         }
     }
-} catch {
+}
+catch {
     $outputContext.success = $false
     $ex = $PSItem
     if ($($ex.Exception.GetType().FullName -eq 'Microsoft.PowerShell.Commands.HttpResponseException') -or
@@ -161,7 +165,8 @@ try {
         $errorObj = Resolve-CasewareError -ErrorObject $ex
         $auditMessage = "Could not delete Caseware account. Error: $($errorObj.FriendlyMessage). Action initiated by: [$($actionContext.Origin)]"
         Write-Warning "Error at Line '$($errorObj.ScriptLineNumber)': $($errorObj.Line). Error: $($errorObj.ErrorDetails)"
-    } else {
+    }
+    else {
         $auditMessage = "Could not delete Caseware account. Error: $($_.Exception.Message). Action initiated by: [$($actionContext.Origin)]"
         Write-Warning "Error at Line '$($ex.InvocationInfo.ScriptLineNumber)': $($ex.InvocationInfo.Line). Error: $($ex.Exception.Message)"
     }

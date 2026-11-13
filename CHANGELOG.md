@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file. The format 
 ### Changed
 - Edited `Resolve-CasewareError` function to work when response ins't json formatted
 - 'CorrelatedAcount not found' in revoking permission, access will result in a success
+- Grant / Revoke role assignment
 
 ## [1.0.1] - 07-11-2025
 

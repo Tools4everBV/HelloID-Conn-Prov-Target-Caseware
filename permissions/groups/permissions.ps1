@@ -45,7 +45,7 @@ function Resolve-CasewareError {
 #endregion
 
 try {
-     #Retrieving token
+    #Retrieving token
     Write-Information 'Retrieving bearer token'
 
     $maxRetry = 10
@@ -83,7 +83,7 @@ try {
 
     #Throw error when failed within max retries
     if ($null -eq $responseToken) {
-        Throw "Failed to retrieve bearer token after $retryCount retries."
+        throw "Failed to retrieve bearer token after $retryCount retries."
     }
 
     $pageSize = 50
@@ -116,13 +116,15 @@ try {
             break
         }
     } while ($true)
-} catch {
+}
+catch {
     $ex = $PSItem
     if ($($ex.Exception.GetType().FullName -eq 'Microsoft.PowerShell.Commands.HttpResponseException') -or
         $($ex.Exception.GetType().FullName -eq 'System.Net.WebException')) {
         $errorObj = Resolve-CasewareError -ErrorObject $ex
         Write-Warning "Error at Line '$($errorObj.ScriptLineNumber)': $($errorObj.Line). Error: $($errorObj.ErrorDetails)"
-    } else {
+    }
+    else {
         Write-Warning "Error at Line '$($ex.InvocationInfo.ScriptLineNumber)': $($ex.InvocationInfo.Line). Error: $($ex.Exception.Message)"
     }
 }

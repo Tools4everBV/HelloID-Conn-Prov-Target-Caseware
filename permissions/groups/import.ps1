@@ -50,7 +50,7 @@ try {
 
     Write-Information "Starting Caseware permission entitlement import with pagesize set to: $($pageSize)"
 
-#Retrieving token
+    #Retrieving token
     Write-Information 'Retrieving bearer token'
 
     $maxRetry = 10
@@ -135,9 +135,9 @@ try {
                     PermissionReference = @{
                         Reference = $role.CWGuid
                     }
-                    Description       = "$($role.Description)"
-                    DisplayName       = "$($role.Name)"
-                    AccountReferences = @()
+                    Description         = "$($role.Description)"
+                    DisplayName         = "$($role.Name)"
+                    AccountReferences   = @()
                 }
 
                 $batchSize = 100

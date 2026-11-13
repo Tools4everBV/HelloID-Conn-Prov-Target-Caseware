@@ -1,5 +1,5 @@
 ################################################################
-# HelloID-Conn-Prov-Target-Caseware-GrantPermission-role
+# HelloID-Conn-Prov-Target-Caseware-GrantPermission-Role
 # PowerShell V2
 ################################################################
 
@@ -89,7 +89,7 @@ try {
 
     #Throw error when failed within max retries
     if ($null -eq $responseToken) {
-        Throw "Failed to retrieve bearer token after $retryCount retries."
+        throw "Failed to retrieve bearer token after $retryCount retries."
     }
 
     Write-Information 'Verifying if a Caseware account exists'
@@ -104,7 +104,8 @@ try {
 
     if ($null -ne $correlatedAccount) {
         $action = 'GrantPermission'
-    } else {
+    }
+    else {
         $action = 'NotFound'
     }
 
@@ -114,40 +115,42 @@ try {
             if (-not($actionContext.DryRun -eq $true)) {
                 Write-Information "Granting Caseware permission: [$($actionContext.PermissionDisplayName)] - [$($actionContext.References.Permission.Reference)]"
                 $splatRestParams = @{
-                    Uri     = "$($actionContext.Configuration.BaseUrl)/$($actionContext.Configuration.CustomerId)/ms/caseware-cloud/api/v2/users/$($actionContext.References.Account)/role-assignments"
-                    Method  = 'PATCH'
-                    Body = @{
+                    Uri         = "$($actionContext.Configuration.BaseUrl)/$($actionContext.Configuration.CustomerId)/ms/caseware-cloud/api/v2/users/$($actionContext.References.Account)/role-assignments"
+                    Method      = 'PATCH'
+                    Body        = @{
                         roleIds  = @("$($actionContext.References.Permission.Reference)")
                         isRemove = $false
                     } | ConvertTo-Json
                     ContentType = 'application/json'
-                    Headers = @{
+                    Headers     = @{
                         Authorization = "Bearer $($responseToken.Token)"
                     }
                 }
                 $null = Invoke-RestMethod @splatRestParams
-            } else {
+            }
+            else {
                 Write-Information "[DryRun] Grant Caseware permission: [$($actionContext.PermissionDisplayName)] - [$($actionContext.References.Permission.Reference)], will be executed during enforcement"
             }
 
             $outputContext.Success = $true
             $outputContext.AuditLogs.Add([PSCustomObject]@{
-                Message = "Grant permission [$($actionContext.PermissionDisplayName)] was successful"
-                IsError = $false
-            })
+                    Message = "Grant permission [$($actionContext.PermissionDisplayName)] was successful"
+                    IsError = $false
+                })
         }
 
         'NotFound' {
             Write-Information "Caseware account: [$($actionContext.References.Account)] could not be found, indicating that it may have been deleted"
-            $outputContext.Success  = $false
+            $outputContext.Success = $false
             $outputContext.AuditLogs.Add([PSCustomObject]@{
-                Message = "Caseware account: [$($actionContext.References.Account)] could not be found, indicating that it may have been deleted"
-                IsError = $true
-            })
+                    Message = "Caseware account: [$($actionContext.References.Account)] could not be found, indicating that it may have been deleted"
+                    IsError = $true
+                })
             break
         }
     }
-} catch {
+}
+catch {
     $outputContext.success = $false
     $ex = $PSItem
     if ($($ex.Exception.GetType().FullName -eq 'Microsoft.PowerShell.Commands.HttpResponseException') -or
@@ -155,12 +158,13 @@ try {
         $errorObj = Resolve-CasewareError -ErrorObject $ex
         $auditMessage = "Could not grant Caseware permission. Error: $($errorObj.FriendlyMessage)"
         Write-Warning "Error at Line '$($errorObj.ScriptLineNumber)': $($errorObj.Line). Error: $($errorObj.ErrorDetails)"
-    } else {
+    }
+    else {
         $auditMessage = "Could not grant Caseware permission. Error: $($_.Exception.Message)"
         Write-Warning "Error at Line '$($ex.InvocationInfo.ScriptLineNumber)': $($ex.InvocationInfo.Line). Error: $($ex.Exception.Message)"
     }
     $outputContext.AuditLogs.Add([PSCustomObject]@{
-        Message = $auditMessage
-        IsError = $true
-    })
+            Message = $auditMessage
+            IsError = $true
+        })
 }
